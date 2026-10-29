@@ -51,6 +51,14 @@ export type ReachoutTimelockState = {
 	isActive?: boolean
 	timeEnforcementEnds?: Date
 	enforcementType?: ReachoutTimelockEnforcementType
+	/**
+	 * enforcement_type exactly as the server sent it. The server uses values the enum
+	 * does not list yet; `enforcementType` falls back to DEFAULT for those, which reads
+	 * as "no restriction" while the account is restricted.
+	 */
+	rawEnforcementType?: string
+	/** op_name of the push notification, or the query path when fetched */
+	opName?: string
 }
 
 export enum ReachoutTimelockEnforcementType {
@@ -70,8 +78,11 @@ export enum ReachoutTimelockEnforcementType {
 	BIZ_COMMERCE_VIOLATION_VIOLENT_CONTENT = 'BIZ_COMMERCE_VIOLATION_VIOLENT_CONTENT',
 	BIZ_COMMERCE_VIOLATION_WEAPONS = 'BIZ_COMMERCE_VIOLATION_WEAPONS',
 	BIZ_QUALITY = 'BIZ_QUALITY',
+	BULK_MESSAGING = 'BULK_MESSAGING',
 	/** This means there is no restriction */
 	DEFAULT = 'DEFAULT',
+	/** Restriction applies to every linked device of the account */
+	RESTRICT_ALL_COMPANIONS = 'RESTRICT_ALL_COMPANIONS',
 	WEB_COMPANION_ONLY = 'WEB_COMPANION_ONLY'
 }
 

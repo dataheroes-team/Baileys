@@ -1124,15 +1124,24 @@ export const makeSocket = (config: SocketConfig) => {
 		const queryResult = await executeWMexQuery<{
 			is_active?: boolean
 			time_enforcement_ends?: string
-			enforcement_type: ReachoutTimelockEnforcementType
+			enforcement_type?: string
 		}>({}, QueryIds.REACHOUT_TIMELOCK, XWAPaths.xwa2_fetch_account_reachout_timelock, query, generateMessageTag)
+		const rawEnforcementType = queryResult?.enforcement_type
+		const knownTypes: string[] = Object.values(ReachoutTimelockEnforcementType)
 		const result: ReachoutTimelockState = {
 			isActive: !!queryResult?.is_active,
 			timeEnforcementEnds:
 				queryResult?.time_enforcement_ends && queryResult?.time_enforcement_ends !== '0'
 					? new Date(parseInt(queryResult.time_enforcement_ends, 10) * 1000)
 					: undefined,
-			enforcementType: queryResult?.enforcement_type ?? ReachoutTimelockEnforcementType.DEFAULT
+			// the server type was cast straight to the enum here, so an unlisted value
+			// leaked out typed as a member; keep the enum honest and the raw value aside
+			enforcementType:
+				rawEnforcementType && knownTypes.includes(rawEnforcementType)
+					? (rawEnforcementType as ReachoutTimelockEnforcementType)
+					: ReachoutTimelockEnforcementType.DEFAULT,
+			rawEnforcementType,
+			opName: XWAPaths.xwa2_fetch_account_reachout_timelock
 		}
 		ev.emit('connection.update', { reachoutTimeLock: result })
 		return result

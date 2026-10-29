@@ -261,7 +261,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 
 			switch (opName) {
 				case 'NotificationUserReachoutTimelockUpdate':
-					handleReachoutTimelockNotification(data)
+					handleReachoutTimelockNotification(data, opName)
 					break
 
 				case 'MessageCappingInfoNotification':
@@ -299,7 +299,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		await handleLegacyMexNewsletterNotification(node)
 	}
 
-	const handleReachoutTimelockNotification = (data: MexGqlData) => {
+	const handleReachoutTimelockNotification = (data: MexGqlData, opName: string) => {
 		const payload = data.xwa2_notify_account_reachout_timelock as ReachoutTimelockNotificationPayload | undefined
 
 		if (!payload) {
@@ -307,12 +307,16 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			return
 		}
 
+		const rawEnforcementType = payload.enforcement_type
+
 		if (!payload.is_active) {
-			logger.info('reachout timelock restriction lifted')
+			logger.info({ rawEnforcementType }, 'reachout timelock restriction lifted')
 			ev.emit('connection.update', {
 				reachoutTimeLock: {
 					isActive: false,
-					enforcementType: ReachoutTimelockEnforcementType.DEFAULT
+					enforcementType: ReachoutTimelockEnforcementType.DEFAULT,
+					rawEnforcementType,
+					opName
 				}
 			})
 			return
@@ -323,17 +327,23 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 			? new Date(parseInt(payload.time_enforcement_ends, 10) * 1000)
 			: new Date(Date.now() + 60_000)
 
-		const enforcementType = isValidEnforcementType(payload.enforcement_type)
-			? payload.enforcement_type
+		const enforcementType = isValidEnforcementType(rawEnforcementType)
+			? rawEnforcementType
 			: ReachoutTimelockEnforcementType.DEFAULT
 
-		logger.info({ enforcementType, timeEnforcementEnds }, 'reachout timelock restriction set')
+		if (rawEnforcementType && enforcementType !== rawEnforcementType) {
+			logger.warn({ rawEnforcementType }, 'unknown reachout timelock enforcement type')
+		}
+
+		logger.info({ enforcementType, rawEnforcementType, timeEnforcementEnds }, 'reachout timelock restriction set')
 
 		ev.emit('connection.update', {
 			reachoutTimeLock: {
 				isActive: true,
 				timeEnforcementEnds,
-				enforcementType
+				enforcementType,
+				rawEnforcementType,
+				opName
 			}
 		})
 	}
