@@ -1047,15 +1047,26 @@ export const makeSocket = (config: SocketConfig) => {
 		ev.emit('connection.update', { receivedPendingNotifications: true })
 	})
 
+	// presence the app asked for last; announcing a new name must not change it
+	let isOnline = !!config.markOnlineOnConnect
+	ev.on('connection.update', update => {
+		if (typeof update.isOnline === 'boolean') {
+			isOnline = update.isOnline
+		}
+	})
+
 	// update credentials when required
 	ev.on('creds.update', update => {
 		const name = update.me?.name
-		// if name has just been received
-		if (creds.me?.name !== name) {
+		// if name has just been received. Updates without `me` (pre-keys, sync
+		// timestamps) used to land here too and sent <presence/> with no type, which
+		// the server reads as available: the companion went online and the primary
+		// phone stopped getting notifications.
+		if (name && creds.me?.name !== name) {
 			logger.debug({ name }, 'updated pushName')
 			sendNode({
 				tag: 'presence',
-				attrs: { name: name! }
+				attrs: { name: name.replace(/@/g, ''), type: isOnline ? 'available' : 'unavailable' }
 			}).catch(err => {
 				logger.warn({ trace: err.stack }, 'error in sending presence update on name change')
 			})
