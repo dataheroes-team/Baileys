@@ -360,6 +360,8 @@ export function makeLibSignalRepository(
 					// Bulk fetch PN sessions - already exist (verified during device discovery)
 					const pnAddrStrings = Array.from(new Set(migrationOps.map(op => op.fromAddr.toString())))
 					const pnSessions = await parsedKeys.get('session', pnAddrStrings)
+					const lidAddrStrings = Array.from(new Set(migrationOps.map(op => op.toAddr.toString())))
+					const lidSessions = await parsedKeys.get('session', lidAddrStrings)
 
 					// Prepare bulk session updates (PN → LID migration + deletion)
 					const sessionUpdates: { [key: string]: Uint8Array | null } = {}
@@ -367,6 +369,19 @@ export function makeLibSignalRepository(
 					for (const op of migrationOps) {
 						const pnAddrStr = op.fromAddr.toString()
 						const lidAddrStr = op.toAddr.toString()
+
+						// A LID session can already be in use while the PN one is left behind:
+						// the mapping is unknown to this store (it was learned elsewhere, or by an
+						// older client), so messages went over LID but nothing migrated. The PN
+						// copy is then the stale one, and writing it over the LID session breaks
+						// the live ratchet: the next message fails with Bad MAC until a retry
+						// rebuilds it. Keep both as they are.
+						const lidSession = lidSessions[lidAddrStr]
+						if (lidSession && libsignal.SessionRecord.deserialize(lidSession).haveOpenSession()) {
+							logger.debug({ pnAddrStr, lidAddrStr }, 'LID session already open, not overwriting with PN session')
+							migratedSessionCache.set(`${op.pnUser}.${op.deviceId}`, true)
+							continue
+						}
 
 						const pnSession = pnSessions[pnAddrStr]
 						if (pnSession) {
