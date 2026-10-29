@@ -587,6 +587,13 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		const msgId = msgKey.id!
 
 		if (messageRetryManager) {
+			// The manager is per socket, msgRetryCounterCache can be kept by the app across
+			// sockets. Without carrying the count over, a message whose redelivery comes
+			// with a fresh socket (the server drops the stream over it) restarts at 1
+			// every time, and our keys, attached from the second retry on, never go out.
+			const carried = (await msgRetryCache.get<number>(`${msgId}:${msgKey?.participant}`)) || 0
+			messageRetryManager.restoreRetryCount(msgId, carried)
+
 			// Check if we've exceeded max retries using the new system
 			if (messageRetryManager.hasExceededMaxRetries(msgId)) {
 				logger.debug({ msgId }, 'reached retry limit with new retry manager, clearing')
