@@ -215,6 +215,16 @@ export class MessageRetryManager {
 	/**
 	 * Increment retry counter for a message
 	 */
+	/**
+	 * Raise the counter to a value kept outside this manager. The manager lives as
+	 * long as one socket, while a message the server keeps redelivering outlives it.
+	 */
+	restoreRetryCount(messageId: string, count: number): void {
+		if (count > this.getRetryCount(messageId)) {
+			this.retryCounters.set(messageId, count)
+		}
+	}
+
 	incrementRetryCount(messageId: string): number {
 		this.retryCounters.set(messageId, (this.retryCounters.get(messageId) || 0) + 1)
 		this.statistics.totalRetries++
