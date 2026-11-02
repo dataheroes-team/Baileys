@@ -39,6 +39,11 @@ export type SocketConfig = {
 	defaultQueryTimeoutMs: number | undefined
 	/** ping-pong interval for WS connection */
 	keepAliveIntervalMs: number
+	/**
+	 * After the server removes this companion, keep the ended socket open for this long and log what arrives.
+	 * Diagnostics only: the connection is reported closed right away. Off when unset.
+	 */
+	observeAfterLogoutMs?: number
 	/** should baileys use the mobile api instead of the multi device api
 	 * @deprecated This feature has been removed
 	 */

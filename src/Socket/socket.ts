@@ -61,6 +61,7 @@ import { BinaryInfo } from '../WAM/BinaryInfo.js'
 import { USyncQuery, USyncUser } from '../WAUSync/'
 import { WebSocketClient } from './Client'
 import { executeWMexQuery } from './mex.js'
+import { isDeviceRemovedError, observeAfterLogout } from './post-logout-observer'
 
 /**
  * Connects to WA servers and performs:
@@ -81,7 +82,8 @@ export const makeSocket = (config: SocketConfig) => {
 		defaultQueryTimeoutMs,
 		transactionOpts,
 		qrTimeout,
-		makeSignalRepository
+		makeSignalRepository,
+		observeAfterLogoutMs
 	} = config
 
 	const publicWAMBuffer = new BinaryInfo()
@@ -140,7 +142,8 @@ export const makeSocket = (config: SocketConfig) => {
 	const sendPromise = promisify(ws.send)
 	/** send a raw buffer */
 	const sendRawMessage = async (data: Uint8Array | Buffer) => {
-		if (!ws.isOpen) {
+		// `closed` matters while the ended socket is held open by observeAfterLogout: ws.isOpen is still true then
+		if (closed || !ws.isOpen) {
 			throw new Boom('Connection Closed', { statusCode: DisconnectReason.connectionClosed })
 		}
 
@@ -642,7 +645,9 @@ export const makeSocket = (config: SocketConfig) => {
 
 		signalRepository.close?.()
 
-		if (!ws.isClosed && !ws.isClosing) {
+		if (observeAfterLogoutMs && ws.isOpen && isDeviceRemovedError(error)) {
+			observeAfterLogout({ ws, decodeFrame: noise.decodeFrame, logger, holdMs: observeAfterLogoutMs })
+		} else if (!ws.isClosed && !ws.isClosing) {
 			try {
 				await ws.close()
 			} catch {}
