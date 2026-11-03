@@ -1003,6 +1003,19 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 				content: binaryNodeContent
 			}
 
+			// WA Web and whatsmeow put the recipient's PN next to a LID destination. The server
+			// relays it to our own devices, and that is how the phone learns whose LID this is:
+			// without it a chat with someone who never wrote shows up as "Unknown user" there.
+			if (isLid && additionalAttributes?.['category'] !== 'peer' && !stanza.attrs.peer_recipient_pn) {
+				const pn = await signalRepository.lidMapping.getPNForLID(destinationJid).catch(error => {
+					logger.debug({ err: error, jid: destinationJid }, 'failed to resolve peer recipient PN')
+					return null
+				})
+				if (pn) {
+					stanza.attrs.peer_recipient_pn = jidNormalizedUser(pn)
+				}
+			}
+
 			// if the participant to send to is explicitly specified (generally retry recp)
 			// ensure the message is only sent to that person
 			// if a retry receipt is sent to everyone -- it'll fail decryption for everyone else who received the msg
