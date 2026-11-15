@@ -1,5 +1,5 @@
-import { MessageRetryManager } from '../../Utils/message-retry-manager'
 import logger from '../../Utils/logger'
+import { MessageRetryManager } from '../../Utils/message-retry-manager'
 
 describe('MessageRetryManager.restoreRetryCount', () => {
 	it('continues counting from a value kept outside the manager', () => {
