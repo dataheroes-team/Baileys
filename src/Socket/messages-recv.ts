@@ -1604,7 +1604,12 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				})
 			])
 		} finally {
-			await sendMessageAck(node).catch(ackErr => logger.error({ ackErr }, 'failed to ack notification'))
+			await sendMessageAck(node).catch(err =>
+				logger.error(
+					{ err, notificationType: node.attrs.type, paired: !!authState.creds.me?.id },
+					'failed to ack notification'
+				)
+			)
 		}
 	}
 

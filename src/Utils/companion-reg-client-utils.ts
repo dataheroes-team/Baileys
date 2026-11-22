@@ -123,7 +123,7 @@ export const handleCompanionRegRefresh = (
 	{ creds, emitCredsUpdate, refreshQR, logger }: CompanionRegRefreshContext
 ): CompanionRegRefreshOutcome => {
 	if (!COMPANION_REG_REFRESH_CHILDREN.some(tag => getBinaryNodeChild(node, tag))) {
-		logger.warn({ node }, 'companion_reg_refresh carries neither expected child; ignoring')
+		logger.warn({ id: node.attrs.id }, 'companion_reg_refresh carries neither expected child; ignoring')
 		return 'ignored_malformed'
 	}
 
