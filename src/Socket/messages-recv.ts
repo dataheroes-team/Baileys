@@ -123,7 +123,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 		signalRepository,
 		query,
 		upsertMessage,
-		resyncAppState,
+		resyncAppStateOnServerSync,
 		onUnexpectedError,
 		assertSessions,
 		sendNode,
@@ -1094,7 +1094,7 @@ export const makeMessagesRecvSocket = (config: SocketConfig) => {
 				const update = getBinaryNodeChild(node, 'collection')
 				if (update) {
 					const name = update.attrs.name as WAPatchName
-					await resyncAppState([name], false)
+					await resyncAppStateOnServerSync(name)
 				}
 
 				break

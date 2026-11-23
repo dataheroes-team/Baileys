@@ -743,6 +743,24 @@ export const makeChatsSocket = (config: SocketConfig) => {
 	)
 
 	/**
+	 * Re-sync a collection the server just announced a change in (`server_sync`).
+	 *
+	 * A collection parked on a missing app state sync key stays parked: the key can
+	 * only come from the phone (APP_STATE_SYNC_KEY_SHARE, handled on `creds.update`),
+	 * so fetching the collection again cannot succeed and costs two queries per
+	 * notification. An offline backlog of ~250 of them drove one account into
+	 * `rate-overlimit` (429) for ten minutes after a reconnect.
+	 */
+	const resyncAppStateOnServerSync = async (name: WAPatchName) => {
+		if (blockedCollections.has(name)) {
+			logger.debug({ name }, 'collection parked on a missing key, skipping server_sync resync')
+			return
+		}
+
+		await resyncAppState([name], false)
+	}
+
+	/**
 	 * fetch the profile picture of a user/group
 	 * type = "preview" for a low res picture
 	 * type = "image for the high res picture"
@@ -1516,6 +1534,7 @@ export const makeChatsSocket = (config: SocketConfig) => {
 		updateDefaultDisappearingMode,
 		getBusinessProfile,
 		resyncAppState,
+		resyncAppStateOnServerSync,
 		chatModify,
 		cleanDirtyBits,
 		addOrEditContact,
